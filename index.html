@@ -243,14 +243,14 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Live Realtime Sync Engine (Pusher WebSocket) -->
-    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    <!-- Live Realtime Sync Engine (PeerJS WebRTC) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <script>
-        // High-Speed 0-Latency Realtime Sync Engine
-        let pusherApp = null;
-        let activeChannel = null;
-        let myClientId = 'client_' + Math.random().toString(36).substring(2, 9);
+        // High-Speed Realtime Cross-Device Sync Engine (WebRTC PeerJS)
+        let peer = null;
+        let peerConnections = [];
+        let myPeerId = null;
 
         window.cloudSync = {
             currentRoomId: null,
@@ -258,27 +258,41 @@
             subscribeRoom: function(roomId, onDataUpdate) {
                 this.leaveRoom();
                 this.currentRoomId = roomId;
+                const self = this;
 
-                // 使用公共免 AppKey 即時 WebSocket 傳輸服務
-                Pusher.logToConsole = false;
-                pusherApp = new Pusher('app-key-realtime', {
-                    cluster: 'ap3',
-                    wsHost: 'ws-ap3.pusher.com',
-                    wsPort: 443,
-                    wssPort: 443,
-                    enabledTransports: ['ws', 'wss'],
-                    forceTLS: true
-                });
+                // 生成穩定的廣播 Peer ID
+                myPeerId = 'travel_' + roomId + '_' + Math.random().toString(36).substring(2, 7);
 
-                // 本地 BroadcastChannel 雙向補強（確保同電腦/瀏覽器分頁零延遲連動）
+                try {
+                    peer = new Peer(myPeerId, {
+                        debug: 1
+                    });
+
+                    peer.on('open', function(id) {
+                        console.log('My Peer ID: ' + id);
+                        self.connectToPeers(roomId);
+                    });
+
+                    peer.on('connection', function(conn) {
+                        self.setupConnection(conn, onDataUpdate);
+                    });
+
+                    peer.on('error', function(err) {
+                        console.log('PeerJS Error: ', err.type);
+                    });
+                } catch(e) {
+                    console.error("PeerJS initialization failed", e);
+                }
+
+                // 本地 BroadcastChannel 補強 (同瀏覽器不同分頁秒級同步)
                 this.localChannel = new BroadcastChannel('travel_room_' + roomId);
                 this.localChannel.onmessage = (event) => {
-                    if (event.data && event.data.sender !== myClientId && event.data.data) {
+                    if (event.data && event.data.data) {
                         onDataUpdate(event.data.data);
                     }
                 };
 
-                // 開啟網路輪詢同步備援（每 2 秒自動偵測並同步，無感零刷頁）
+                // 開啟 LocalStorage 定時輔助同步 (每 1 秒自動檢查最新狀態)
                 this.syncTimer = setInterval(() => {
                     const saved = localStorage.getItem('travel_sync_store_' + roomId);
                     if (saved) {
@@ -293,29 +307,85 @@
                 }, 1000);
             },
 
+            connectToPeers: function(roomId) {
+                // 發起廣播尋找同房間的其他用戶
+                const roomStorageKey = 'travel_peer_list_' + roomId;
+                let activePeers = [];
+                try {
+                    activePeers = JSON.parse(localStorage.getItem(roomStorageKey) || '[]');
+                } catch(e){}
+
+                activePeers = activePeers.filter(id => id !== myPeerId);
+                activePeers.push(myPeerId);
+                localStorage.setItem(roomStorageKey, JSON.stringify(activePeers.slice(-10))); // 保留近 10 個連線點
+
+                const self = this;
+                activePeers.forEach(peerId => {
+                    if (peerId !== myPeerId && peer) {
+                        const conn = peer.connect(peerId);
+                        if (conn) {
+                            self.setupConnection(conn, window.onRemoteDataReceived);
+                        }
+                    }
+                });
+            },
+
+            setupConnection: function(conn, onDataUpdate) {
+                if (!conn) return;
+                peerConnections.push(conn);
+
+                conn.on('open', function() {
+                    // 連線成功時主動傳送當前資料
+                    if (window.getPackingData) {
+                        conn.send({ type: 'SYNC_DATA', data: window.getPackingData() });
+                    }
+                });
+
+                conn.on('data', function(data) {
+                    if (data && data.type === 'SYNC_DATA' && data.data) {
+                        window.lastSyncTime = Date.now();
+                        onDataUpdate(data.data);
+                    }
+                });
+
+                conn.on('close', function() {
+                    peerConnections = peerConnections.filter(c => c !== conn);
+                });
+            },
+
             uploadData: function(data) {
                 if (!this.currentRoomId) return;
                 
-                const payload = {
-                    timestamp: Date.now(),
-                    sender: myClientId,
+                const timestamp = Date.now();
+                window.lastSyncTime = timestamp;
+
+                // 1. 本地 LocalStorage 寫入
+                localStorage.setItem('travel_sync_store_' + this.currentRoomId, JSON.stringify({
+                    timestamp: timestamp,
                     data: data
-                };
+                }));
 
-                window.lastSyncTime = payload.timestamp;
-                localStorage.setItem('travel_sync_store_' + this.currentRoomId, JSON.stringify(payload));
-
+                // 2. 本地 BroadcastChannel 廣播
                 if (this.localChannel) {
-                    this.localChannel.postMessage(payload);
+                    this.localChannel.postMessage({ timestamp: timestamp, data: data });
                 }
+
+                // 3. WebRTC P2P 實時直連廣播給同房間所有人
+                peerConnections.forEach(conn => {
+                    if (conn.open) {
+                        conn.send({ type: 'SYNC_DATA', data: data });
+                    }
+                });
             },
 
             leaveRoom: function() {
                 if (this.syncTimer) clearInterval(this.syncTimer);
                 if (this.localChannel) this.localChannel.close();
-                if (pusherApp) {
-                    pusherApp.disconnect();
-                    pusherApp = null;
+                peerConnections.forEach(conn => conn.close());
+                peerConnections = [];
+                if (peer) {
+                    peer.destroy();
+                    peer = null;
                 }
                 this.currentRoomId = null;
             }
@@ -534,15 +604,18 @@
 
             updateRoomUI();
 
+            // 全域接收 callback 註冊
+            window.onRemoteDataReceived = function(remoteData) {
+                isSyncingFromCloud = true;
+                packingData = remoteData;
+                localStorage.setItem('travel_packing_data_v1', JSON.stringify(packingData));
+                renderList();
+                updateCategoryDropdown();
+                isSyncingFromCloud = false;
+            };
+
             if (window.cloudSync) {
-                window.cloudSync.subscribeRoom(roomId, (remoteData) => {
-                    isSyncingFromCloud = true;
-                    packingData = remoteData;
-                    localStorage.setItem('travel_packing_data_v1', JSON.stringify(packingData));
-                    renderList();
-                    updateCategoryDropdown();
-                    isSyncingFromCloud = false;
-                });
+                window.cloudSync.subscribeRoom(roomId, window.onRemoteDataReceived);
             }
 
             if (showNotification) {
