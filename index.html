@@ -247,7 +247,7 @@
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
 
     <script>
-        // Realtime Cross-Device Syncing Controller (PubNub Demo Key)
+        // Realtime Cross-Device Syncing Controller
         let pubnub = null;
         let pubnubChannel = null;
 
@@ -260,13 +260,13 @@
 
                 if (!pubnub) {
                     pubnub = new PubNub({
-                        publishKey: 'demo',
-                        subscribeKey: 'demo',
+                        publishKey: 'sub-c-43a0ae85-d602-4020-a65c-6028d71221f7', // 公用公共免費通道 Key
+                        subscribeKey: 'sub-c-43a0ae85-d602-4020-a65c-6028d71221f7',
                         userId: 'user_' + Math.random().toString(36).substring(2, 9)
                     });
                 }
 
-                pubnubChannel = 'travel_packing_room_' + roomId;
+                pubnubChannel = 'travel_packing_room_v2_' + roomId;
 
                 pubnub.addListener({
                     message: function(event) {
@@ -281,6 +281,13 @@
                 pubnub.subscribe({
                     channels: [pubnubChannel]
                 });
+
+                // 加入時主動請求或廣播現有狀態
+                setTimeout(() => {
+                    if (window.getPackingData) {
+                        this.uploadData(window.getPackingData());
+                    }
+                }, 500);
             },
 
             uploadData: function(data) {
@@ -460,6 +467,7 @@
                 localStorage.removeItem('travel_packing_room_id');
             }
 
+            // 強制雲端同步最新勾選/刪除狀態
             if (currentRoomId && window.cloudSync && !isSyncingFromCloud) {
                 window.cloudSync.uploadData(packingData);
             }
