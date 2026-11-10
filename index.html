@@ -243,48 +243,52 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Live Realtime Sync Engine (PeerJS WebRTC) -->
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- Firebase SDKs for Realtime Cloud Sync -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <script>
-        // High-Speed Realtime Cross-Device Sync Engine (WebRTC PeerJS)
-        let peer = null;
-        let peerConnections = [];
-        let myPeerId = null;
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDummyKeyForFirebaseDemoProjectOnly",
+            authDomain: "travel-packing-sync.firebaseapp.com",
+            projectId: "travel-packing-sync",
+            storageBucket: "travel-packing-sync.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef123456"
+        };
 
+        let db = null;
+        let auth = null;
+        let unsubscribeRoom = null;
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'travel-checklist-app';
+
+        // High-Speed Realtime Cloud Sync Engine (Firestore + BroadcastChannel)
         window.cloudSync = {
             currentRoomId: null,
 
-            subscribeRoom: function(roomId, onDataUpdate) {
+            initFirebase: async function() {
+                if (db) return true;
+                try {
+                    const cfg = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+                    const app = initializeApp(cfg);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    await signInAnonymously(auth);
+                    return true;
+                } catch(e) {
+                    console.warn("Firebase Auth fallback to local broadcast mode", e);
+                    return false;
+                }
+            },
+
+            subscribeRoom: async function(roomId, onDataUpdate) {
                 this.leaveRoom();
                 this.currentRoomId = roomId;
-                const self = this;
 
-                // 生成穩定的廣播 Peer ID
-                myPeerId = 'travel_' + roomId + '_' + Math.random().toString(36).substring(2, 7);
-
-                try {
-                    peer = new Peer(myPeerId, {
-                        debug: 1
-                    });
-
-                    peer.on('open', function(id) {
-                        console.log('My Peer ID: ' + id);
-                        self.connectToPeers(roomId);
-                    });
-
-                    peer.on('connection', function(conn) {
-                        self.setupConnection(conn, onDataUpdate);
-                    });
-
-                    peer.on('error', function(err) {
-                        console.log('PeerJS Error: ', err.type);
-                    });
-                } catch(e) {
-                    console.error("PeerJS initialization failed", e);
-                }
-
-                // 本地 BroadcastChannel 補強 (同瀏覽器不同分頁秒級同步)
+                // 1. 本地 BroadcastChannel 雙重保障
                 this.localChannel = new BroadcastChannel('travel_room_' + roomId);
                 this.localChannel.onmessage = (event) => {
                     if (event.data && event.data.data) {
@@ -292,100 +296,61 @@
                     }
                 };
 
-                // 開啟 LocalStorage 定時輔助同步 (每 1 秒自動檢查最新狀態)
-                this.syncTimer = setInterval(() => {
-                    const saved = localStorage.getItem('travel_sync_store_' + roomId);
-                    if (saved) {
-                        try {
-                            const parsed = JSON.parse(saved);
-                            if (parsed.timestamp > (window.lastSyncTime || 0)) {
-                                window.lastSyncTime = parsed.timestamp;
-                                onDataUpdate(parsed.data);
+                // 2. 雲端即時連線 (Firestore onSnapshot)
+                const isConnected = await this.initFirebase();
+                if (isConnected && db) {
+                    try {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+                        unsubscribeRoom = onSnapshot(docRef, (docSnap) => {
+                            if (docSnap.exists()) {
+                                const data = docSnap.data();
+                                if (data && data.packingData) {
+                                    window.lastSyncTime = data.updatedAt || Date.now();
+                                    onDataUpdate(data.packingData);
+                                }
                             }
-                        } catch(e){}
+                        }, (error) => {
+                            console.error("Firestore sync error:", error);
+                        });
+                    } catch(e) {
+                        console.error("Error setting up room listener", e);
                     }
-                }, 1000);
+                }
             },
 
-            connectToPeers: function(roomId) {
-                // 發起廣播尋找同房間的其他用戶
-                const roomStorageKey = 'travel_peer_list_' + roomId;
-                let activePeers = [];
-                try {
-                    activePeers = JSON.parse(localStorage.getItem(roomStorageKey) || '[]');
-                } catch(e){}
-
-                activePeers = activePeers.filter(id => id !== myPeerId);
-                activePeers.push(myPeerId);
-                localStorage.setItem(roomStorageKey, JSON.stringify(activePeers.slice(-10))); // 保留近 10 個連線點
-
-                const self = this;
-                activePeers.forEach(peerId => {
-                    if (peerId !== myPeerId && peer) {
-                        const conn = peer.connect(peerId);
-                        if (conn) {
-                            self.setupConnection(conn, window.onRemoteDataReceived);
-                        }
-                    }
-                });
-            },
-
-            setupConnection: function(conn, onDataUpdate) {
-                if (!conn) return;
-                peerConnections.push(conn);
-
-                conn.on('open', function() {
-                    // 連線成功時主動傳送當前資料
-                    if (window.getPackingData) {
-                        conn.send({ type: 'SYNC_DATA', data: window.getPackingData() });
-                    }
-                });
-
-                conn.on('data', function(data) {
-                    if (data && data.type === 'SYNC_DATA' && data.data) {
-                        window.lastSyncTime = Date.now();
-                        onDataUpdate(data.data);
-                    }
-                });
-
-                conn.on('close', function() {
-                    peerConnections = peerConnections.filter(c => c !== conn);
-                });
-            },
-
-            uploadData: function(data) {
+            uploadData: async function(data) {
                 if (!this.currentRoomId) return;
-                
+
                 const timestamp = Date.now();
                 window.lastSyncTime = timestamp;
 
-                // 1. 本地 LocalStorage 寫入
-                localStorage.setItem('travel_sync_store_' + this.currentRoomId, JSON.stringify({
-                    timestamp: timestamp,
-                    data: data
-                }));
-
-                // 2. 本地 BroadcastChannel 廣播
+                // 1. 發送本機即時廣播
                 if (this.localChannel) {
                     this.localChannel.postMessage({ timestamp: timestamp, data: data });
                 }
 
-                // 3. WebRTC P2P 實時直連廣播給同房間所有人
-                peerConnections.forEach(conn => {
-                    if (conn.open) {
-                        conn.send({ type: 'SYNC_DATA', data: data });
+                // 2. 推送至雲端資料庫
+                if (db) {
+                    try {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', this.currentRoomId);
+                        await setDoc(docRef, {
+                            packingData: data,
+                            updatedAt: timestamp
+                        }, { merge: true });
+                    } catch(e) {
+                        console.error("Cloud upload failed", e);
                     }
-                });
+                }
             },
 
             leaveRoom: function() {
-                if (this.syncTimer) clearInterval(this.syncTimer);
-                if (this.localChannel) this.localChannel.close();
-                peerConnections.forEach(conn => conn.close());
-                peerConnections = [];
-                if (peer) {
-                    peer.destroy();
-                    peer = null;
+                if (unsubscribeRoom) {
+                    unsubscribeRoom();
+                    unsubscribeRoom = null;
+                }
+                if (this.localChannel) {
+                    this.localChannel.close();
+                    this.localChannel = null;
                 }
                 this.currentRoomId = null;
             }
@@ -548,7 +513,7 @@
                 localStorage.removeItem('travel_packing_room_id');
             }
 
-            // 強制雲端同步最新勾選/刪除狀態
+            // 強制雲端同步最新勾選/刪除狀態 (即時推送)
             if (currentRoomId && window.cloudSync && !isSyncingFromCloud) {
                 window.cloudSync.uploadData(packingData);
             }
