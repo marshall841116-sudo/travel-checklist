@@ -243,13 +243,13 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Realtime PubSub CDN for Live Multi-device Syncing -->
-    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
+    <!-- PeerJS WebRTC Realtime Sync Library -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <script>
-        // Realtime Cross-Device Syncing Controller
-        let pubnub = null;
-        let pubnubChannel = null;
+        // Realtime WebRTC Cross-Device Syncing Controller
+        let peer = null;
+        let connections = [];
 
         window.cloudSync = {
             currentRoomId: null,
@@ -258,55 +258,68 @@
                 this.leaveRoom();
                 this.currentRoomId = roomId;
 
-                if (!pubnub) {
-                    pubnub = new PubNub({
-                        publishKey: 'sub-c-43a0ae85-d602-4020-a65c-6028d71221f7', // 公用公共免費通道 Key
-                        subscribeKey: 'sub-c-43a0ae85-d602-4020-a65c-6028d71221f7',
-                        userId: 'user_' + Math.random().toString(36).substring(2, 9)
-                    });
-                }
+                const myPeerId = 'packing_' + roomId + '_' + Math.random().toString(36).substring(2, 7);
+                const hostPeerId = 'packing_room_host_' + roomId;
 
-                pubnubChannel = 'travel_packing_room_v2_' + roomId;
+                peer = new Peer(hostPeerId);
 
-                pubnub.addListener({
-                    message: function(event) {
-                        if (event.publisher !== pubnub.getUserId()) {
-                            if (event.message && event.message.packingData) {
-                                onDataUpdate(event.message.packingData);
-                            }
+                peer.on('open', (id) => {
+                    console.log('Room Host Created:', id);
+                });
+
+                peer.on('error', (err) => {
+                    if (err.type === 'unavailable-id') {
+                        // Host 已經存在，改以 Client 身份連線
+                        peer = new Peer(myPeerId);
+                        peer.on('open', () => {
+                            const conn = peer.connect(hostPeerId);
+                            this.setupConnection(conn, onDataUpdate);
+                        });
+                    }
+                });
+
+                peer.on('connection', (conn) => {
+                    this.setupConnection(conn, onDataUpdate);
+                    // 當有新人加入時，立刻把當前最新清單發送給他
+                    setTimeout(() => {
+                        if (window.getPackingData) {
+                            conn.send({ type: 'sync', packingData: window.getPackingData() });
                         }
+                    }, 300);
+                });
+            },
+
+            setupConnection: function(conn, onDataUpdate) {
+                connections.push(conn);
+
+                conn.on('data', (data) => {
+                    if (data && data.type === 'sync' && data.packingData) {
+                        onDataUpdate(data.packingData);
                     }
                 });
 
-                pubnub.subscribe({
-                    channels: [pubnubChannel]
+                conn.on('close', () => {
+                    connections = connections.filter(c => c !== conn);
                 });
-
-                // 加入時主動請求或廣播現有狀態
-                setTimeout(() => {
-                    if (window.getPackingData) {
-                        this.uploadData(window.getPackingData());
-                    }
-                }, 500);
             },
 
             uploadData: function(data) {
-                if (!this.currentRoomId || !pubnub || !pubnubChannel) return;
-                pubnub.publish({
-                    channel: pubnubChannel,
-                    message: {
-                        packingData: data,
-                        timestamp: Date.now()
+                if (!this.currentRoomId) return;
+                connections.forEach(conn => {
+                    if (conn.open) {
+                        conn.send({ type: 'sync', packingData: data });
                     }
-                }).catch(err => console.error("Publish error:", err));
+                });
             },
 
             leaveRoom: function() {
-                if (pubnub && pubnubChannel) {
-                    pubnub.unsubscribe({ channels: [pubnubChannel] });
+                connections.forEach(conn => conn.close());
+                connections = [];
+                if (peer) {
+                    peer.destroy();
+                    peer = null;
                 }
                 this.currentRoomId = null;
-                pubnubChannel = null;
             }
         };
     </script>
