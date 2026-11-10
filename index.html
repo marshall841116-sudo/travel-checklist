@@ -438,11 +438,27 @@
         window.onload = function() {
             loadFromLocalStorage();
             switchMode(currentMode);
+
+            // 自動檢查網址參數 ?room= 或是上一回合儲存的房間代碼
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomFromUrl = urlParams.get('room');
+            const savedRoomId = localStorage.getItem('travel_packing_room_id');
+
+            const targetRoom = roomFromUrl || savedRoomId;
+            if (targetRoom) {
+                joinRoom(targetRoom, false);
+            }
         };
 
         function saveToLocalStorage() {
             localStorage.setItem('travel_packing_data_v1', JSON.stringify(packingData));
             localStorage.setItem('travel_packing_mode_v1', currentMode);
+
+            if (currentRoomId) {
+                localStorage.setItem('travel_packing_room_id', currentRoomId);
+            } else {
+                localStorage.removeItem('travel_packing_room_id');
+            }
 
             if (currentRoomId && window.cloudSync && !isSyncingFromCloud) {
                 window.cloudSync.uploadData(packingData);
@@ -485,11 +501,18 @@
                 showToast('請輸入房間代碼！', 'warning');
                 return;
             }
-            joinRoom(code);
+            joinRoom(code, true);
         }
 
-        function joinRoom(roomId) {
+        function joinRoom(roomId, showNotification = true) {
             currentRoomId = roomId;
+            localStorage.setItem('travel_packing_room_id', roomId);
+
+            // 更新網址參數 (不重新整理頁面)
+            const url = new URL(window.location.href);
+            url.searchParams.set('room', roomId);
+            window.history.replaceState({}, '', url.href);
+
             updateRoomUI();
 
             if (window.cloudSync) {
@@ -503,8 +526,10 @@
                 });
             }
 
-            showToast(`已成功連線至共編房間「${roomId}」`, 'success');
-            closeShareModal();
+            if (showNotification) {
+                showToast(`已成功連線至共編房間「${roomId}」`, 'success');
+                closeShareModal();
+            }
         }
 
         function leaveRoom() {
@@ -512,6 +537,13 @@
                 window.cloudSync.leaveRoom();
             }
             currentRoomId = null;
+            localStorage.removeItem('travel_packing_room_id');
+
+            // 移除網址中的 room 參數
+            const url = new URL(window.location.href);
+            url.searchParams.delete('room');
+            window.history.replaceState({}, '', url.href);
+
             updateRoomUI();
             showToast('已切回單機模式', 'info');
             closeShareModal();
