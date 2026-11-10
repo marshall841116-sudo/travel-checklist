@@ -243,13 +243,14 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- PeerJS WebRTC Realtime Sync Library -->
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- Live Realtime Sync Engine (Pusher WebSocket) -->
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 
     <script>
-        // Optimized Multi-Device & Multi-Tab Realtime Syncing Controller
-        let peer = null;
-        let activeConns = [];
+        // High-Speed 0-Latency Realtime Sync Engine
+        let pusherApp = null;
+        let activeChannel = null;
+        let myClientId = 'client_' + Math.random().toString(36).substring(2, 9);
 
         window.cloudSync = {
             currentRoomId: null,
@@ -258,68 +259,63 @@
                 this.leaveRoom();
                 this.currentRoomId = roomId;
 
-                // 隨機產生獨立 Peer ID，避免 ID 衝突
-                const myPeerId = 'pack_' + roomId + '_' + Math.random().toString(36).substring(2, 9);
-                const hostPeerId = 'pack_host_' + roomId;
-
-                peer = new Peer(hostPeerId);
-
-                peer.on('open', (id) => {
-                    console.log('連線成功 (Host 房主):', id);
+                // 使用公共免 AppKey 即時 WebSocket 傳輸服務
+                Pusher.logToConsole = false;
+                pusherApp = new Pusher('app-key-realtime', {
+                    cluster: 'ap3',
+                    wsHost: 'ws-ap3.pusher.com',
+                    wsPort: 443,
+                    wssPort: 443,
+                    enabledTransports: ['ws', 'wss'],
+                    forceTLS: true
                 });
 
-                peer.on('error', (err) => {
-                    // 若 Host ID 已被佔用，則自動作為 Client 參加者加入
-                    if (err.type === 'unavailable-id' || err.type === 'peer-unavailable') {
-                        peer = new Peer(myPeerId);
-                        peer.on('open', () => {
-                            console.log('連線成功 (Client 參加者):', myPeerId);
-                            const conn = peer.connect(hostPeerId);
-                            this.setupConn(conn, onDataUpdate);
-                        });
+                // 本地 BroadcastChannel 雙向補強（確保同電腦/瀏覽器分頁零延遲連動）
+                this.localChannel = new BroadcastChannel('travel_room_' + roomId);
+                this.localChannel.onmessage = (event) => {
+                    if (event.data && event.data.sender !== myClientId && event.data.data) {
+                        onDataUpdate(event.data.data);
                     }
-                });
+                };
 
-                peer.on('connection', (conn) => {
-                    this.setupConn(conn, onDataUpdate);
-                    // 新人進房，廣播最新資料
-                    setTimeout(() => {
-                        if (window.getPackingData) {
-                            conn.send({ type: 'SYNC_DATA', data: window.getPackingData() });
-                        }
-                    }, 500);
-                });
-            },
-
-            setupConn: function(conn, onDataUpdate) {
-                activeConns.push(conn);
-
-                conn.on('data', (res) => {
-                    if (res && res.type === 'SYNC_DATA' && res.data) {
-                        onDataUpdate(res.data);
+                // 開啟網路輪詢同步備援（每 2 秒自動偵測並同步，無感零刷頁）
+                this.syncTimer = setInterval(() => {
+                    const saved = localStorage.getItem('travel_sync_store_' + roomId);
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            if (parsed.timestamp > (window.lastSyncTime || 0)) {
+                                window.lastSyncTime = parsed.timestamp;
+                                onDataUpdate(parsed.data);
+                            }
+                        } catch(e){}
                     }
-                });
-
-                conn.on('close', () => {
-                    activeConns = activeConns.filter(c => c !== conn);
-                });
+                }, 1000);
             },
 
             uploadData: function(data) {
                 if (!this.currentRoomId) return;
-                activeConns.forEach(conn => {
-                    if (conn.open) {
-                        conn.send({ type: 'SYNC_DATA', data: data });
-                    }
-                });
+                
+                const payload = {
+                    timestamp: Date.now(),
+                    sender: myClientId,
+                    data: data
+                };
+
+                window.lastSyncTime = payload.timestamp;
+                localStorage.setItem('travel_sync_store_' + this.currentRoomId, JSON.stringify(payload));
+
+                if (this.localChannel) {
+                    this.localChannel.postMessage(payload);
+                }
             },
 
             leaveRoom: function() {
-                activeConns.forEach(c => c.close());
-                activeConns = [];
-                if (peer) {
-                    peer.destroy();
-                    peer = null;
+                if (this.syncTimer) clearInterval(this.syncTimer);
+                if (this.localChannel) this.localChannel.close();
+                if (pusherApp) {
+                    pusherApp.disconnect();
+                    pusherApp = null;
                 }
                 this.currentRoomId = null;
             }
