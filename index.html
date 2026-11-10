@@ -1,34 +1,35 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-    <title>旅遊攜帶清單 Smart Travel Packing Checklist</title>
-    
-    <!-- iOS Web App Support -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="旅遊清單">
-    <link rel="apple-touch-icon" href="https://api.iconify.design/lucide:plane-takeoff.svg?color=%230284c7">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旅遊攜帶清單 | PackSmart Dark Edition</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Font Inter & Noto Sans TC -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts Inter & Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
+                        darkBg: '#0f172a',
+                        darkCard: '#1e293b',
+                        darkBorder: '#334155',
+                        tealBrand: {
+                            50: '#f0fdfa',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            900: '#134e4a',
+                        },
+                        accentSky: {
                             400: '#38bdf8',
                             500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1',
                         }
                     },
                     fontFamily: {
@@ -39,909 +40,694 @@
         }
     </script>
     <style>
-        /* iOS Smooth Scrolling & Touch Tweaks */
-        html, body {
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
         }
-        .custom-scrollbar::-webkit-scrollbar {
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
             width: 6px;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
             border-radius: 4px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+        .checkbox-custom:checked + label .checkmark-icon {
+            opacity: 1;
+            transform: scale(1);
         }
-        .item-checked {
+        .checkbox-custom:checked + label span.item-text {
             text-decoration: line-through;
-            color: #94a3b8;
+            color: #64748b;
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen font-sans flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+<body class="min-h-screen text-slate-100 flex flex-col justify-between pb-12 bg-slate-900">
 
-    <!-- Header Navigation -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div class="max-w-4xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 to-teal-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-                    <i class="fa-solid font-bold fa-plane-departure text-lg"></i>
+    <!-- Header / Navbar -->
+    <header class="bg-slate-800/90 backdrop-blur-md border-b border-slate-700/80 sticky top-0 z-30 shadow-md">
+        <div class="max-w-4xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-tr from-tealBrand-600 to-accentSky-500 text-white p-2.5 rounded-2xl shadow-lg shadow-tealBrand-900/40">
+                        <i class="fa-solid fa-plane-departure text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold bg-gradient-to-r from-tealBrand-400 to-accentSky-400 bg-clip-text text-transparent">
+                            PackSmart 清單
+                        </h1>
+                        <p class="text-xs text-slate-400">智慧旅途打包管理助手</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="text-xl font-bold bg-gradient-to-r from-brand-600 to-teal-600 bg-clip-text text-transparent">旅遊攜帶清單</h1>
-                    <p class="text-xs text-slate-400">Pack Smart, Travel Happy</p>
+
+                <!-- Action Buttons: Import / Export -->
+                <div class="flex gap-1.5 sm:hidden">
+                    <button onclick="exportJSON()" title="備份匯出" class="p-2 text-slate-400 hover:text-white bg-slate-700/50 rounded-xl border border-slate-600/50">
+                        <i class="fa-solid fa-download text-xs"></i>
+                    </button>
+                    <button onclick="triggerImport()" title="匯入備份" class="p-2 text-slate-400 hover:text-white bg-slate-700/50 rounded-xl border border-slate-600/50">
+                        <i class="fa-solid fa-upload text-xs"></i>
+                    </button>
                 </div>
             </div>
 
-            <!-- Tab Switcher -->
-            <div class="bg-slate-100 p-1 rounded-xl flex items-center shadow-inner">
-                <button id="tab-domestic" onclick="switchMode('domestic')" class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200">
-                    <i class="fa-solid fa-car text-xs"></i>
-                    <span>國內旅遊</span>
-                </button>
-                <button id="tab-foreign" onclick="switchMode('foreign')" class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200">
-                    <i class="fa-solid fa-plane text-xs"></i>
-                    <span>國外旅遊</span>
-                </button>
+            <!-- Tab Buttons: Domestic vs International & Backup -->
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <div class="bg-slate-900/80 p-1 rounded-xl flex gap-1 flex-1 sm:flex-initial border border-slate-700/60">
+                    <button id="tab-domestic" onclick="switchTab('domestic')" 
+                        class="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-map-pin"></i> 國內旅遊
+                    </button>
+                    <button id="tab-international" onclick="switchTab('international')" 
+                        class="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-earth-americas"></i> 國外旅遊
+                    </button>
+                </div>
+
+                <!-- Desktop Backup Controls -->
+                <div class="hidden sm:flex items-center gap-1.5 pl-2 border-l border-slate-700">
+                    <button onclick="exportJSON()" title="匯出 JSON 備份" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 text-xs font-medium transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-download"></i> 匯出
+                    </button>
+                    <button onclick="triggerImport()" title="匯入 JSON 備份" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 text-xs font-medium transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-upload"></i> 匯入
+                    </button>
+                    <input type="file" id="json-file-input" class="hidden" accept=".json" onchange="importJSON(event)">
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- Main Content Container -->
-    <main class="max-w-4xl mx-auto px-4 py-6 flex-grow w-full space-y-6">
+    <!-- Main Content Area -->
+    <main class="max-w-4xl mx-auto px-4 pt-6 w-full flex-grow">
 
-        <!-- Banner & Progress Bar Dashboard -->
-        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 relative overflow-hidden">
-            <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-brand-50 rounded-full blur-2xl opacity-60 pointer-events-none"></div>
+        <!-- Controls Header: Progress Bar & Search/Filter Toolbar -->
+        <div class="bg-slate-800/80 backdrop-blur rounded-2xl p-5 mb-6 shadow-xl border border-slate-700/70">
+            <!-- Progress Section -->
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-slate-200" id="progress-title">國內旅遊打包進度</span>
+                    <span id="progress-badge" class="bg-tealBrand-900/60 text-tealBrand-400 text-xs font-medium px-2.5 py-0.5 rounded-full border border-tealBrand-500/30">0/0 完成</span>
+                </div>
+                <span id="progress-percentage" class="text-lg font-bold text-tealBrand-400">0%</span>
+            </div>
             
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 relative z-10">
-                <div>
-                    <div class="flex items-center gap-2 mb-2">
-                        <div class="inline-flex items-center space-x-2 px-2.5 py-1 rounded-full bg-brand-50 text-brand-600 text-xs font-semibold">
-                            <span id="mode-badge-dot" class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
-                            <span id="mode-badge-text">國內旅遊模式</span>
-                        </div>
-                        <div id="room-badge" class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200">
-                            <i class="fa-solid fa-users text-xs"></i>
-                            <span id="room-badge-text">單機個人版</span>
-                        </div>
-                    </div>
-                    <h2 class="text-lg font-bold text-slate-800">準備打包進度</h2>
-                    <p class="text-xs text-slate-400 mt-0.5">點擊核取方框完成打包，祝您旅途愉快！</p>
+            <!-- Progress Track -->
+            <div class="w-full bg-slate-900 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-700/80 mb-5">
+                <div id="progress-fill" class="bg-gradient-to-r from-tealBrand-500 to-accentSky-500 h-full rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
+
+            <!-- Search Bar & Filters -->
+            <div class="flex flex-col sm:flex-row gap-3 items-center justify-between border-t border-slate-700/60 pt-4">
+                <!-- Search Input -->
+                <div class="relative w-full sm:w-64">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="搜尋攜帶物品..." class="w-full bg-slate-900/90 text-xs sm:text-sm pl-8 pr-3 py-2 rounded-xl border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-tealBrand-500 transition">
                 </div>
-                
-                <!-- Action Tools -->
-                <div class="flex flex-wrap items-center gap-2">
-                    <button onclick="openShareModal()" class="flex items-center space-x-1.5 text-white bg-gradient-to-r from-brand-500 to-teal-500 hover:from-brand-600 hover:to-teal-600 px-3 py-2 rounded-xl text-xs font-medium transition shadow-sm shadow-brand-500/20">
-                        <i class="fa-solid fa-user-plus"></i>
-                        <span>多人共編</span>
-                    </button>
-                    <button onclick="clearAllChecks()" class="flex items-center space-x-1.5 text-slate-600 hover:text-amber-600 hover:bg-amber-50 px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 transition">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        <span>一鍵清除勾選</span>
-                    </button>
-                    <button onclick="resetToDefault()" class="flex items-center space-x-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 transition">
-                        <i class="fa-solid fa-trash-arrow-up"></i>
-                        <span>重置清單</span>
-                    </button>
+
+                <!-- Status Filters -->
+                <div class="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-700/80 w-full sm:w-auto">
+                    <button id="filter-all" onclick="setFilter('all')" class="flex-1 sm:flex-initial px-3 py-1 rounded-lg text-xs font-medium transition text-white bg-slate-700">全部</button>
+                    <button id="filter-pending" onclick="setFilter('pending')" class="flex-1 sm:flex-initial px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition">未完成</button>
+                    <button id="filter-completed" onclick="setFilter('completed')" class="flex-1 sm:flex-initial px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition">已完成</button>
                 </div>
             </div>
 
-            <!-- Progress Bar -->
-            <div class="relative z-10">
-                <div class="flex justify-between items-center text-xs font-semibold mb-1.5">
-                    <span class="text-slate-500">完成度</span>
-                    <span id="progress-percent" class="text-brand-600 font-bold">0%</span>
+            <!-- Action Toolbar -->
+            <div class="mt-4 pt-3 border-t border-slate-700/40 flex flex-wrap justify-between items-center gap-2">
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button onclick="clearAllChecks()" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-slate-700/50 hover:bg-slate-700 border border-slate-600/60 text-slate-300 font-medium transition flex items-center justify-center gap-1.5 active:scale-95 text-xs">
+                        <i class="fa-solid fa-rotate-left text-slate-400"></i> 一鍵清除勾選
+                    </button>
+                    <button onclick="promptAddCategory()" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-tealBrand-600 hover:bg-tealBrand-500 text-white font-medium transition flex items-center justify-center gap-1.5 shadow-md shadow-tealBrand-900/30 active:scale-95 text-xs">
+                        <i class="fa-solid fa-plus"></i> 新增分類
+                    </button>
                 </div>
-                <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-100">
-                    <div id="progress-bar" class="h-full bg-gradient-to-r from-brand-400 to-teal-400 rounded-full transition-all duration-300 w-0"></div>
-                </div>
-                <div class="mt-2 text-right">
-                    <span id="progress-count" class="text-xs text-slate-400">0 / 0 項目</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Add Custom Category & Item Bar -->
-        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3">
-            <div class="flex flex-wrap items-center justify-between border-b border-slate-100 pb-2">
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider"><i class="fa-solid fa-plus-circle mr-1 text-brand-500"></i>新增項目 / 分類</span>
-                <button onclick="promptAddNewCategory()" class="text-xs text-brand-600 hover:text-brand-700 font-medium hover:underline flex items-center gap-1">
-                    <i class="fa-solid fa-folder-plus"></i>
-                    <span>+ 新增全新型態分類</span>
+                <button onclick="confirmResetToDefault()" class="text-xs text-slate-500 hover:text-rose-400 transition-colors py-1 flex items-center gap-1 ml-auto sm:ml-0">
+                    <i class="fa-solid fa-trash-arrow-up"></i> 還原目前版本預設
                 </button>
             </div>
-            
-            <div class="flex flex-col md:flex-row items-center gap-3">
-                <div class="w-full md:w-1/3">
-                    <label class="block text-xs font-medium text-slate-500 mb-1">選擇目的地分類</label>
-                    <select id="add-item-category" class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
-                        <!-- Dynamic Categories -->
-                    </select>
-                </div>
-                <div class="w-full md:w-2/3">
-                    <label class="block text-xs font-medium text-slate-500 mb-1">新增物品名稱</label>
-                    <div class="flex items-center gap-2">
-                        <input type="text" id="add-item-input" placeholder="例如：底片相機、保暖圍巾..." class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
-                        <button onclick="addNewItem()" class="shrink-0 bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition flex items-center space-x-1 shadow-md shadow-brand-500/20">
-                            <i class="fa-solid fa-plus text-xs"></i>
-                            <span>新增物品</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
         </div>
 
-        <!-- Categories and Items Container -->
-        <div id="categories-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Categories Container -->
+        <div id="categories-container" class="space-y-5">
             <!-- Dynamically populated categories -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden text-center py-12 bg-slate-800/50 rounded-2xl border border-dashed border-slate-700 px-4">
+            <div class="w-16 h-16 bg-slate-800 text-tealBrand-400 rounded-full flex items-center justify-center mx-auto mb-3 border border-slate-700">
+                <i class="fa-solid fa-box-open text-2xl"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-300 mb-1">找不到相關項目或分類</h3>
+            <p class="text-slate-500 text-xs mb-4">嘗試修改搜尋關鍵字、切換篩選條件或新增分類。</p>
+            <div class="flex justify-center gap-3">
+                <button onclick="promptAddCategory()" class="px-4 py-2 bg-tealBrand-600 text-white text-xs font-medium rounded-xl hover:bg-tealBrand-500 transition">新增分類</button>
+                <button onclick="resetToDefault()" class="px-4 py-2 bg-slate-700 text-slate-300 text-xs font-medium rounded-xl hover:bg-slate-600 transition">載入預設資料</button>
+            </div>
         </div>
 
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 mt-8">
-        <p>Smart Travel Packing Checklist &copy; 輕鬆好行 攜帶物品檢核網</p>
-    </footer>
-
-    <!-- Multiplayer Share Modal -->
-    <div id="share-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 transform transition-all">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
-                        <i class="fa-solid fa-users text-sm"></i>
-                    </div>
-                    <h3 class="font-bold text-slate-800 text-base">多人共同編輯設定</h3>
-                </div>
-                <button onclick="closeShareModal()" class="text-slate-400 hover:text-slate-600 text-sm">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+    <!-- Modal Box -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl transform transition-all scale-95 opacity-0" id="modal-box">
+            <h3 id="modal-title" class="text-base font-bold text-slate-100 mb-2">標題</h3>
+            <p id="modal-desc" class="text-xs text-slate-400 mb-4">內容描述文字</p>
+            <div id="modal-input-container" class="mb-4 hidden">
+                <input type="text" id="modal-input" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-tealBrand-500 text-sm" placeholder="請輸入...">
             </div>
-
-            <div class="space-y-4">
-                <p class="text-xs text-slate-500 leading-relaxed">
-                    輸入相同的<strong class="text-brand-600">行程房間代碼</strong>，您與同行的朋友就能同步看到並即時修改同一份清單！
-                </p>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">行程房間代碼 (例如：tokyo2026)</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="room-code-input" placeholder="請輸入自訂代碼..." class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
-                        <button onclick="joinRoomFromInput()" class="bg-brand-500 hover:bg-brand-600 text-white font-medium px-4 py-2 rounded-xl text-sm transition shrink-0">
-                            加入/建立
-                        </button>
-                    </div>
-                </div>
-
-                <div id="active-room-box" class="hidden bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
-                    <div class="flex items-center justify-between text-xs">
-                        <span class="text-slate-500">目前共編房間：</span>
-                        <span id="current-room-display" class="font-bold text-brand-600"></span>
-                    </div>
-                    <div class="flex gap-2 pt-1">
-                        <button onclick="copyShareLink()" class="w-full bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs py-2 rounded-lg font-medium transition flex items-center justify-center space-x-1">
-                            <i class="fa-solid fa-link"></i>
-                            <span>複製邀請連結</span>
-                        </button>
-                        <button onclick="leaveRoom()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs py-2 rounded-lg font-medium transition flex items-center justify-center space-x-1">
-                            <i class="fa-solid fa-right-from-bracket"></i>
-                            <span>切回單機模式</span>
-                        </button>
-                    </div>
-                </div>
+            <div class="flex justify-end gap-2.5">
+                <button id="modal-btn-cancel" onclick="closeModal()" class="px-4 py-2 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-700 font-medium text-xs transition">取消</button>
+                <button id="modal-btn-confirm" class="px-4 py-2 rounded-xl bg-tealBrand-600 hover:bg-tealBrand-500 text-white font-medium text-xs transition shadow-md">確認</button>
             </div>
         </div>
     </div>
 
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-xl shadow-xl z-50 opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-2">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-tealBrand-400"></i>
+        <span id="toast-msg">操作成功</span>
+    </div>
 
-    <!-- Free Public Realtime WebSocket Sync Engine (PieSocket) -->
+    <footer class="mt-12 text-center text-xs text-slate-500">
+        <p>© PackSmart Travel Checklist - 暗黑簡約版</p>
+    </footer>
+
+    <!-- JavaScript Logic -->
     <script>
-        window.cloudSync = {
-            ws: null,
-            currentRoomId: null,
+        // Preset Standard Defaults
+        const DEFAULT_DATA = {
+            domestic: [
+                {
+                    id: 'dom_cat_1',
+                    name: '重要證件與隨身卡片',
+                    items: [
+                        { id: 'item_1', name: '身分證 / 健保卡', checked: false },
+                        { id: 'item_2', name: '駕照 / 汽機車執照', checked: false },
+                        { id: 'item_3', name: '現金 / 常用信用卡', checked: false },
+                        { id: 'item_4', name: '家門鑰匙 / 車鑰匙', checked: false }
+                    ]
+                },
+                {
+                    id: 'dom_cat_2',
+                    name: '3C 設備與線材',
+                    items: [
+                        { id: 'item_5', name: '智慧型手機', checked: false },
+                        { id: 'item_6', name: '充電線 / 多孔充電頭', checked: false },
+                        { id: 'item_7', name: '行動電源 (PowerBank)', checked: false },
+                        { id: 'item_8', name: '無線藍芽耳機', checked: false }
+                    ]
+                },
+                {
+                    id: 'dom_cat_3',
+                    name: '個人盥洗與衣物',
+                    items: [
+                        { id: 'item_9', name: '替換衣物 / 內衣褲', checked: false },
+                        { id: 'item_10', name: '個人牙刷牙膏 / 盥洗套組', checked: false },
+                        { id: 'item_11', name: '護膚保養品 / 防曬乳', checked: false }
+                    ]
+                }
+            ],
+            international: [
+                {
+                    id: 'int_cat_1',
+                    name: '國外必備重點證件',
+                    items: [
+                        { id: 'item_101', name: '護照 (檢查效期>6個月)', checked: false },
+                        { id: 'item_102', name: '目的國簽證 / 電子簽列印本', checked: false },
+                        { id: 'item_103', name: '機票確認單 / 飯店預約單', checked: false },
+                        { id: 'item_104', name: '外幣現金 / 雙幣信用卡', checked: false }
+                    ]
+                },
+                {
+                    id: 'int_cat_2',
+                    name: '國外通訊與插座',
+                    items: [
+                        { id: 'item_106', name: '網卡 (SIM/eSIM) / 退卡針', checked: false },
+                        { id: 'item_107', name: '萬國轉接頭', checked: false },
+                        { id: 'item_108', name: '行動電源 (放隨身行李登機)', checked: false }
+                    ]
+                },
+                {
+                    id: 'int_cat_3',
+                    name: '搭機與常備藥品',
+                    items: [
+                        { id: 'item_110', name: '飛行頸枕 / 遮光眼罩 / 耳塞', checked: false },
+                        { id: 'item_112', name: '個人常備藥 (感冒/腸胃/止痛藥)', checked: false }
+                    ]
+                }
+            ]
+        };
 
-            subscribeRoom: function(roomId, onDataUpdate) {
-                this.leaveRoom();
-                this.currentRoomId = roomId;
+        // App State
+        let currentTab = 'domestic'; 
+        let currentFilter = 'all'; // 'all', 'pending', 'completed'
+        let searchQuery = '';
+        let appData = { domestic: [], international: [] };
 
-                // 本地跨分頁 BroadcastChannel 支援
-                this.localChannel = new BroadcastChannel('travel_room_' + roomId);
-                this.localChannel.onmessage = (event) => {
-                    if (event.data && event.data.data) {
-                        onDataUpdate(event.data.data);
-                    }
-                };
+        // Initial setup
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDataFromStorage();
+            switchTab('domestic');
+        });
 
-                // 開啟跨裝置公用 WebSocket 秒級同步通道
-                const wsUrl = `wss://demo.piesocket.com/v3/channel_${encodeURIComponent(roomId)}?api_key=VCX2a0EWuBxAzFQLA0031POW5UTyWEnGlDuTwZX7&notify_self=false`;
-                
+        // Storage Operations
+        function loadDataFromStorage() {
+            const saved = localStorage.getItem('packsmart_dark_checklist_data');
+            if (saved) {
                 try {
-                    this.ws = new WebSocket(wsUrl);
-                    this.ws.onmessage = (event) => {
-                        try {
-                            const msg = JSON.parse(event.data);
-                            if (msg && msg.type === 'SYNC_PACKING_DATA' && msg.data) {
-                                window.lastSyncTime = msg.timestamp;
-                                onDataUpdate(msg.data);
-                            }
-                        } catch(e) {}
-                    };
-                } catch(e) {
-                    console.error("WebSocket connection error:", e);
-                }
-            },
-
-            uploadData: function(data) {
-                if (!this.currentRoomId) return;
-
-                const timestamp = Date.now();
-                const payload = {
-                    type: 'SYNC_PACKING_DATA',
-                    timestamp: timestamp,
-                    data: data
-                };
-
-                // 1. 發送本機跨分頁廣播
-                if (this.localChannel) {
-                    this.localChannel.postMessage({ timestamp: timestamp, data: data });
-                }
-
-                // 2. 發送跨裝置 WebSocket 廣播
-                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.ws.send(JSON.stringify(payload));
-                }
-            },
-
-            leaveRoom: function() {
-                if (this.ws) {
-                    this.ws.close();
-                    this.ws = null;
-                }
-                if (this.localChannel) {
-                    this.localChannel.close();
-                    this.localChannel = null;
-                }
-                this.currentRoomId = null;
-            }
-        };
-    </script>
-
-    <!-- JavaScript Main Logic -->
-    <script>
-        // Default items template for domestic travel
-        const defaultDomesticList = [
-            {
-                category: "重要證件與財務",
-                icon: "fa-id-card",
-                items: [
-                    { id: "d1", name: "身分證 / 健保卡", checked: false },
-                    { id: "d2", name: "駕照 / 行照", checked: false },
-                    { id: "d3", name: "現金 / 信用卡 / 金融卡", checked: false },
-                    { id: "d4", name: "車票 / 飯店預約確認單", checked: false }
-                ]
-            },
-            {
-                category: "電子3C裝備",
-                icon: "fa-mobile-screen-button",
-                items: [
-                    { id: "d5", name: "智慧型手機 & 充電線", checked: false },
-                    { id: "d6", name: "行動電源 (行動充)", checked: false },
-                    { id: "d7", name: "耳機 / 藍牙耳機", checked: false },
-                    { id: "d8", name: "多孔延長線 / 充電頭", checked: false }
-                ]
-            },
-            {
-                category: "衣物與配件",
-                icon: "fa-shirt",
-                items: [
-                    { id: "d9", name: "替換衣物 (依天數計算)", checked: false },
-                    { id: "d10", name: "內衣褲 / 襪子", checked: false },
-                    { id: "d11", name: "睡衣 / 個人舒適服裝", checked: false },
-                    { id: "d12", name: "舒適外套 / 防風衣物", checked: false },
-                    { id: "d13", name: "拖鞋 / 涼鞋", checked: false }
-                ]
-            },
-            {
-                category: "個人清潔與保養",
-                icon: "fa-pump-soap",
-                items: [
-                    { id: "d14", name: "牙刷 / 牙膏 / 漱口水", checked: false },
-                    { id: "d15", name: "洗面乳 / 個人護膚品", checked: false },
-                    { id: "d16", name: "防曬乳 / 隔離霜", checked: false },
-                    { id: "d17", name: "毛巾 / 洗沐旅行組", checked: false },
-                    { id: "d18", name: "梳子 / 髮圈 / 刮鬍刀", checked: false }
-                ]
-            },
-            {
-                category: "隨身保健與日常",
-                icon: "fa-capsules",
-                items: [
-                    { id: "d19", name: "個人常備藥物 / 腸胃藥", checked: false },
-                    { id: "d20", name: " OK 繃 / 消毒棉片", checked: false },
-                    { id: "d21", name: "衛生紙 / 濕紙巾", checked: false },
-                    { id: "d22", name: "雨具 (折傘 / 雨衣)", checked: false },
-                    { id: "d23", name: "水壺 / 保溫瓶", checked: false }
-                ]
-            }
-        ];
-
-        // Default items template for foreign travel
-        const defaultForeignList = [
-            {
-                category: "海外出國關鍵證件",
-                icon: "fa-passport",
-                items: [
-                    { id: "f1", name: "護照 (效期6個月以上)", checked: false },
-                    { id: "f2", name: "目的國簽證 / ESTA / 網簽印本", checked: false },
-                    { id: "f3", name: "外幣現金 / 海外刷卡高回饋信用卡", checked: false },
-                    { id: "f4", name: "機票電子憑證 / 住宿登記單", checked: false },
-                    { id: "f5", name: "護照影本 & 2吋大頭照備用", checked: false },
-                    { id: "f6", name: "海外旅遊保險單據", checked: false }
-                ]
-            },
-            {
-                category: "國際 3C 與轉接配件",
-                icon: "fa-plug",
-                items: [
-                    { id: "f7", name: "萬國轉接頭", checked: false },
-                    { id: "f8", name: "變壓器 (確認電壓支援)", checked: false },
-                    { id: "f9", name: "國外漫遊網卡 (SIM/eSIM/WiFi機)", checked: false },
-                    { id: "f10", name: "智慧手機 & 備用充電線", checked: false },
-                    { id: "f11", name: "大容量行動電源 (需隨身攜帶)", checked: false }
-                ]
-            },
-            {
-                category: "衣物與長途飛行必備",
-                icon: "fa-suitcase-rolling",
-                items: [
-                    { id: "f12", name: "換洗衣服 / 保暖防風外衣", checked: false },
-                    { id: "f13", name: "飛行頸枕 / 眼罩 / 耳塞", checked: false },
-                    { id: "f14", name: "好穿走長路的運動鞋", checked: false },
-                    { id: "f15", name: "貼身防盜腰包 / 側背包", checked: false },
-                    { id: "f16", name: "壓縮收納袋 / 髒衣袋", checked: false }
-                ]
-            },
-            {
-                category: "海外醫療與緊急照護",
-                icon: "fa-kit-medical",
-                items: [
-                    { id: "f17", name: "個人慢性病處方藥 (含英文說明)", checked: false },
-                    { id: "f18", name: "綜合感冒藥 / 退燒止痛藥", checked: false },
-                    { id: "f19", name: "止瀉藥 / 胃藥 / 止暈藥", checked: false },
-                    { id: "f20", name: "外傷藥膏 / OK 繃", checked: false }
-                ]
-            },
-            {
-                category: "盥洗與個人隨身品",
-                icon: "fa-bath",
-                items: [
-                    { id: "f21", name: "旅行裝牙刷牙膏組", checked: false },
-                    { id: "f22", name: "小於100ml透明分裝瓶清潔組", checked: false },
-                    { id: "f23", name: "高係數防曬乳 / 護唇膏", checked: false },
-                    { id: "f24", name: "隨身面紙 / 防疫酒精濕紙巾", checked: false }
-                ]
-            }
-        ];
-
-        // State variables
-        let currentMode = 'domestic';
-        let currentRoomId = null;
-        let isSyncingFromCloud = false;
-
-        let packingData = {
-            domestic: [],
-            foreign: []
-        };
-
-        window.getPackingData = function() {
-            return packingData;
-        };
-
-        window.onload = function() {
-            loadFromLocalStorage();
-            switchMode(currentMode);
-
-            // 自動檢查網址參數 ?room= 或是上一回合儲存的房間代碼
-            const urlParams = new URLSearchParams(window.location.search);
-            const roomFromUrl = urlParams.get('room');
-            const savedRoomId = localStorage.getItem('travel_packing_room_id');
-
-            const targetRoom = roomFromUrl || savedRoomId;
-            if (targetRoom) {
-                joinRoom(targetRoom, false);
-            }
-        };
-
-        function saveToLocalStorage() {
-            localStorage.setItem('travel_packing_data_v1', JSON.stringify(packingData));
-            localStorage.setItem('travel_packing_mode_v1', currentMode);
-
-            if (currentRoomId) {
-                localStorage.setItem('travel_packing_room_id', currentRoomId);
-            } else {
-                localStorage.removeItem('travel_packing_room_id');
-            }
-
-            // 強制發送秒級廣播
-            if (currentRoomId && window.cloudSync && !isSyncingFromCloud) {
-                window.cloudSync.uploadData(packingData);
-            }
-        }
-
-        function loadFromLocalStorage() {
-            const savedData = localStorage.getItem('travel_packing_data_v1');
-            const savedMode = localStorage.getItem('travel_packing_mode_v1');
-
-            if (savedData) {
-                try {
-                    packingData = JSON.parse(savedData);
+                    appData = JSON.parse(saved);
                 } catch (e) {
-                    console.error("Failed to parse localStorage data", e);
-                    initDefaultData();
+                    console.error("Storage corrupted, loading default", e);
+                    appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
                 }
             } else {
-                initDefaultData();
-            }
-
-            if (savedMode && (savedMode === 'domestic' || savedMode === 'foreign')) {
-                currentMode = savedMode;
+                appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+                saveDataToStorage();
             }
         }
 
-        function openShareModal() {
-            document.getElementById('share-modal').classList.remove('hidden');
-            updateRoomUI();
+        function saveDataToStorage() {
+            localStorage.setItem('packsmart_dark_checklist_data', JSON.stringify(appData));
+            updateProgress();
         }
 
-        function closeShareModal() {
-            document.getElementById('share-modal').classList.add('hidden');
-        }
-
-        function joinRoomFromInput() {
-            const input = document.getElementById('room-code-input');
-            const code = input ? input.value.trim() : '';
-            if (!code) {
-                showToast('請輸入房間代碼！', 'warning');
-                return;
-            }
-            joinRoom(code, true);
-        }
-
-        function joinRoom(roomId, showNotification = true) {
-            currentRoomId = roomId;
-            localStorage.setItem('travel_packing_room_id', roomId);
-
-            // 更新網址參數 (不重新整理頁面)
-            const url = new URL(window.location.href);
-            url.searchParams.set('room', roomId);
-            window.history.replaceState({}, '', url.href);
-
-            updateRoomUI();
-
-            // 全域接收 callback 註冊
-            window.onRemoteDataReceived = function(remoteData) {
-                isSyncingFromCloud = true;
-                packingData = remoteData;
-                localStorage.setItem('travel_packing_data_v1', JSON.stringify(packingData));
-                renderList();
-                updateCategoryDropdown();
-                isSyncingFromCloud = false;
-            };
-
-            if (window.cloudSync) {
-                window.cloudSync.subscribeRoom(roomId, window.onRemoteDataReceived);
-            }
-
-            if (showNotification) {
-                showToast(`已成功連線至共編房間「${roomId}」`, 'success');
-                closeShareModal();
-            }
-        }
-
-        function leaveRoom() {
-            if (window.cloudSync) {
-                window.cloudSync.leaveRoom();
-            }
-            currentRoomId = null;
-            localStorage.removeItem('travel_packing_room_id');
-
-            // 移除網址中的 room 參數
-            const url = new URL(window.location.href);
-            url.searchParams.delete('room');
-            window.history.replaceState({}, '', url.href);
-
-            updateRoomUI();
-            showToast('已切回單機模式', 'info');
-            closeShareModal();
-        }
-
-        function copyShareLink() {
-            if (!currentRoomId) return;
-            const url = new URL(window.location.href);
-            url.searchParams.set('room', currentRoomId);
-            
-            const shareUrl = url.href;
-
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(shareUrl).then(() => {
-                    showToast('已複製多人邀請連結！', 'success');
-                }).catch(() => {
-                    fallbackCopyText(shareUrl);
-                });
-            } else {
-                fallbackCopyText(shareUrl);
-            }
-        }
-
-        function fallbackCopyText(text) {
-            const dummy = document.createElement('input');
-            document.body.appendChild(dummy);
-            dummy.value = text;
-            dummy.select();
-            dummy.setSelectionRange(0, 99999);
-            document.execCommand('copy');
-            document.body.removeChild(dummy);
-            showToast('已複製多人邀請連結！', 'success');
-        }
-
-        function updateRoomUI() {
-            const roomBadgeText = document.getElementById('room-badge-text');
-            const activeRoomBox = document.getElementById('active-room-box');
-            const currentRoomDisplay = document.getElementById('current-room-display');
-
-            if (currentRoomId) {
-                roomBadgeText.innerText = `房間: ${currentRoomId}`;
-                document.getElementById('room-badge').className = "inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200 animate-pulse";
-                if (activeRoomBox) activeRoomBox.classList.remove('hidden');
-                if (currentRoomDisplay) currentRoomDisplay.innerText = currentRoomId;
-            } else {
-                roomBadgeText.innerText = "單機個人版";
-                document.getElementById('room-badge').className = "inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200";
-                if (activeRoomBox) activeRoomBox.classList.add('hidden');
-            }
-        }
-
-        function initDefaultData() {
-            packingData.domestic = JSON.parse(JSON.stringify(defaultDomesticList));
-            packingData.foreign = JSON.parse(JSON.stringify(defaultForeignList));
-            saveToLocalStorage();
-        }
-
-        function switchMode(mode) {
-            currentMode = mode;
-            saveToLocalStorage();
-
+        // Tab Switching
+        function switchTab(tab) {
+            currentTab = tab;
             const domTab = document.getElementById('tab-domestic');
-            const forTab = document.getElementById('tab-foreign');
-            const modeBadgeText = document.getElementById('mode-badge-text');
+            const intTab = document.getElementById('tab-international');
+            const progressTitle = document.getElementById('progress-title');
 
-            if (mode === 'domestic') {
-                domTab.className = "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold bg-white text-brand-600 shadow-sm transition-all duration-200";
-                forTab.className = "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-800 transition-all duration-200";
-                modeBadgeText.innerText = "國內旅遊模式";
+            if (tab === 'domestic') {
+                domTab.className = "flex-1 sm:flex-initial px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-tealBrand-600 text-white shadow";
+                intTab.className = "flex-1 sm:flex-initial px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-400 hover:text-slate-200";
+                progressTitle.textContent = "國內旅遊打包進度";
             } else {
-                forTab.className = "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold bg-white text-teal-600 shadow-sm transition-all duration-200";
-                domTab.className = "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-800 transition-all duration-200";
-                modeBadgeText.innerText = "國外旅遊模式";
+                intTab.className = "flex-1 sm:flex-initial px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-accentSky-500 text-white shadow";
+                domTab.className = "flex-1 sm:flex-initial px-4 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-400 hover:text-slate-200";
+                progressTitle.textContent = "國外旅遊打包進度";
             }
 
-            updateCategoryDropdown();
-            renderList();
+            renderCategories();
         }
 
-        function updateCategoryDropdown() {
-            const select = document.getElementById('add-item-category');
-            if (!select) return;
-            select.innerHTML = '';
-
-            const currentList = packingData[currentMode] || [];
-            if (currentList.length === 0) {
-                const option = document.createElement('option');
-                option.value = '';
-                option.textContent = '-- 請先新增分類 --';
-                select.appendChild(option);
-                return;
-            }
-
-            currentList.forEach((catGroup) => {
-                const option = document.createElement('option');
-                option.value = catGroup.category;
-                option.textContent = catGroup.category;
-                select.appendChild(option);
-            });
+        // Search & Filter Controllers
+        function handleSearch(val) {
+            searchQuery = val.trim().toLowerCase();
+            renderCategories();
         }
 
-        function toggleItem(itemId) {
-            const currentList = packingData[currentMode];
-            for (let cat of currentList) {
-                const item = cat.items.find(i => i.id === itemId);
-                if (item) {
-                    item.checked = !item.checked;
-                    break;
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            ['all', 'pending', 'completed'].forEach(f => {
+                const btn = document.getElementById(`filter-${f}`);
+                if (f === filterType) {
+                    btn.className = "flex-1 sm:flex-initial px-3 py-1 rounded-lg text-xs font-medium transition text-white bg-slate-700 shadow-sm";
+                } else {
+                    btn.className = "flex-1 sm:flex-initial px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition";
                 }
-            }
-            saveToLocalStorage();
-            renderList();
+            });
+            renderCategories();
         }
 
-        function addNewItem() {
-            const select = document.getElementById('add-item-category');
-            const input = document.getElementById('add-item-input');
+        // Main Render Logic
+        function renderCategories() {
+            const container = document.getElementById('categories-container');
+            const emptyState = document.getElementById('empty-state');
+            const categories = appData[currentTab] || [];
 
-            if (!select || !input) return;
+            container.innerHTML = '';
+            let totalRenderedItems = 0;
 
-            const categoryName = select.value;
-            const itemName = input.value.trim();
-
-            if (!categoryName) {
-                showToast('請先新增或選擇分類！', 'warning');
-                return;
-            }
-
-            if (!itemName) {
-                showToast('請輸入物品名稱！', 'warning');
-                return;
-            }
-
-            const currentList = packingData[currentMode];
-            const targetCategory = currentList.find(c => c.category === categoryName);
-
-            if (targetCategory) {
-                const newItemId = 'custom_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-                targetCategory.items.push({
-                    id: newItemId,
-                    name: itemName,
-                    checked: false
+            categories.forEach(cat => {
+                // Filter Items based on search and status filter
+                const filteredItems = cat.items.filter(item => {
+                    const matchesSearch = item.name.toLowerCase().includes(searchQuery);
+                    let matchesFilter = true;
+                    if (currentFilter === 'pending') matchesFilter = !item.checked;
+                    if (currentFilter === 'completed') matchesFilter = item.checked;
+                    return matchesSearch && matchesFilter;
                 });
 
-                input.value = '';
-                saveToLocalStorage();
-                renderList();
-                showToast(`已新增「${itemName}」至【${categoryName}】`, 'success');
-            }
-        }
-
-        function deleteItem(itemId) {
-            const currentList = packingData[currentMode];
-            let deletedName = '';
-
-            for (let cat of currentList) {
-                const idx = cat.items.findIndex(i => i.id === itemId);
-                if (idx !== -1) {
-                    deletedName = cat.items[idx].name;
-                    cat.items.splice(idx, 1);
-                    break;
-                }
-            }
-
-            saveToLocalStorage();
-            renderList();
-            if (deletedName) {
-                showToast(`已刪除「${deletedName}」`, 'info');
-            }
-        }
-
-        function renderList() {
-            const container = document.getElementById('categories-container');
-            if (!container) return;
-            container.innerHTML = '';
-
-            const currentList = packingData[currentMode] || [];
-
-            let totalItems = 0;
-            let checkedItems = 0;
-
-            if (currentList.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
-                        <i class="fa-solid fa-folder-open text-4xl mb-3 text-slate-300"></i>
-                        <p class="text-sm font-medium">目前尚無任何分類，請點擊上方「+ 新增全新型態分類」</p>
-                    </div>
-                `;
-            }
-
-            currentList.forEach((catGroup, catIdx) => {
-                const catTotal = catGroup.items.length;
-                const catChecked = catGroup.items.filter(i => i.checked).length;
-                
-                totalItems += catTotal;
-                checkedItems += catChecked;
-
-                const categoryCard = document.createElement('div');
-                categoryCard.className = "bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between transition hover:shadow-md";
-
-                let itemsHtml = '';
-                if (catGroup.items.length === 0) {
-                    itemsHtml = `<p class="text-xs text-slate-400 italic py-2">此分類內尚無物品</p>`;
-                } else {
-                    itemsHtml = catGroup.items.map(item => `
-                        <div class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition group">
-                            <label class="flex items-center space-x-3 cursor-pointer w-full select-none">
-                                <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItem('${item.id}')" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 transition">
-                                <span class="text-sm ${item.checked ? 'item-checked' : 'text-slate-700 font-medium'}">${escapeHtml(item.name)}</span>
-                            </label>
-                            <button onclick="deleteItem('${item.id}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 p-1 text-xs transition" title="刪除物品">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-                    `).join('');
-                }
-
-                categoryCard.innerHTML = `
-                    <div>
-                        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-7 h-7 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center text-xs">
-                                    <i class="fa-solid ${catGroup.icon || 'fa-folder'}"></i>
-                                </div>
-                                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                                    <span>${escapeHtml(catGroup.category)}</span>
-                                    <button onclick="renameCategory('${catIdx}')" class="text-slate-300 hover:text-brand-600 text-xs transition" title="修改分類名稱">
-                                        <i class="fa-solid fa-pen"></i>
-                                    </button>
-                                </h3>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <span class="text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100 font-medium">${catChecked}/${catTotal}</span>
-                                <button onclick="deleteCategory('${catIdx}')" class="text-slate-300 hover:text-rose-500 text-xs p-1 transition" title="刪除分類">
-                                    <i class="fa-solid fa-trash-can"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="space-y-1">
-                            ${itemsHtml}
-                        </div>
-                    </div>
-                `;
-
-                container.appendChild(categoryCard);
-            });
-
-            const percent = totalItems === 0 ? 0 : Math.round((checkedItems / totalItems) * 100);
-            document.getElementById('progress-bar').style.width = `${percent}%`;
-            document.getElementById('progress-percent').innerText = `${percent}%`;
-            document.getElementById('progress-count').innerText = `${checkedItems} / ${totalItems} 項目已準備完成`;
-        }
-
-        function promptAddNewCategory() {
-            const name = prompt("請輸入新分類名稱 (例如: 攝影器材、寶寶用品):");
-            if (name && name.trim()) {
-                const trimmedName = name.trim();
-                const currentList = packingData[currentMode];
-                
-                if (currentList.some(c => c.category === trimmedName)) {
-                    showToast('該分類名稱已存在！', 'warning');
+                // Skip rendering empty categories when filtering or searching
+                if ((searchQuery || currentFilter !== 'all') && filteredItems.length === 0) {
                     return;
                 }
 
-                currentList.push({
-                    category: trimmedName,
-                    icon: "fa-folder-open",
-                    items: []
+                totalRenderedItems += filteredItems.length;
+
+                const catCard = document.createElement('div');
+                catCard.className = "bg-slate-800/70 border border-slate-700/70 rounded-2xl p-5 shadow-lg transition hover:border-slate-600";
+
+                const itemsCount = cat.items.length;
+                const checkedCount = cat.items.filter(i => i.checked).length;
+
+                catCard.innerHTML = `
+                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-700/60">
+                        <div class="flex items-center gap-2 flex-1 mr-2">
+                            <i class="fa-solid fa-folder-open text-tealBrand-400"></i>
+                            <h3 class="font-bold text-slate-100 text-sm sm:text-base flex-1 hover:text-tealBrand-400 cursor-pointer" onclick="promptEditCategory('${cat.id}')">
+                                ${escapeHtml(cat.name)}
+                            </h3>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-slate-900/80 text-slate-400 font-normal border border-slate-700">
+                                ${checkedCount}/${itemsCount}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="promptEditCategory('${cat.id}')" title="修改標題" class="p-1.5 text-slate-400 hover:text-tealBrand-400 rounded-lg hover:bg-slate-700 transition">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="confirmDeleteCategory('${cat.id}')" title="刪除分類" class="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-700 transition">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Items List -->
+                    <div class="space-y-1.5 mb-3">
+                        ${filteredItems.length === 0 ? '<p class="text-xs text-slate-500 py-2 text-center">無符合條件的項目</p>' : ''}
+                        ${filteredItems.map(item => `
+                            <div class="group flex items-center justify-between p-2 rounded-xl hover:bg-slate-900/40 transition border border-transparent hover:border-slate-700/50">
+                                <div class="flex items-center gap-3 flex-1 min-w-0">
+                                    <input type="checkbox" id="chk-${item.id}" class="checkbox-custom hidden" ${item.checked ? 'checked' : ''} onchange="toggleItemCheck('${cat.id}', '${item.id}')">
+                                    <label for="chk-${item.id}" class="flex items-center gap-3 cursor-pointer w-full select-none truncate">
+                                        <div class="w-5 h-5 rounded-md border-2 border-slate-600 flex items-center justify-center transition bg-slate-900 group-hover:border-tealBrand-400 flex-shrink-0">
+                                            <i class="fa-solid fa-check text-xs text-tealBrand-400 checkmark-icon opacity-0 transition-opacity"></i>
+                                        </div>
+                                        <span class="item-text text-slate-200 text-xs sm:text-sm truncate font-medium transition">${escapeHtml(item.name)}</span>
+                                    </label>
+                                </div>
+                                <div class="opacity-100 sm:opacity-0 group-hover:opacity-100 transition flex items-center gap-1 pl-2">
+                                    <button onclick="promptEditItem('${cat.id}', '${item.id}')" class="p-1 text-slate-500 hover:text-tealBrand-400 transition">
+                                        <i class="fa-solid fa-pen text-xs"></i>
+                                    </button>
+                                    <button onclick="deleteItem('${cat.id}', '${item.id}')" class="p-1 text-slate-500 hover:text-rose-400 transition">
+                                        <i class="fa-solid fa-xmark text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- Item Input Form -->
+                    <form onsubmit="handleAddItem(event, '${cat.id}')" class="flex gap-2 pt-1">
+                        <input type="text" id="input-new-item-${cat.id}" placeholder="新增攜帶物品..." class="flex-1 bg-slate-900/90 text-xs px-3 py-2 rounded-xl border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-tealBrand-500 transition">
+                        <button type="submit" class="px-3 py-2 bg-slate-700 hover:bg-tealBrand-600 text-slate-200 hover:text-white text-xs font-semibold rounded-xl transition flex items-center gap-1">
+                            <i class="fa-solid fa-plus text-xs"></i> 新增
+                        </button>
+                    </form>
+                `;
+
+                container.appendChild(catCard);
+            });
+
+            if (categories.length === 0 || (searchQuery && totalRenderedItems === 0)) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            updateProgress();
+        }
+
+        // Calculate Global Progress
+        function updateProgress() {
+            const categories = appData[currentTab] || [];
+            let total = 0;
+            let checked = 0;
+
+            categories.forEach(cat => {
+                total += cat.items.length;
+                checked += cat.items.filter(i => i.checked).length;
+            });
+
+            const percentage = total === 0 ? 0 : Math.round((checked / total) * 100);
+
+            document.getElementById('progress-badge').textContent = `${checked}/${total} 完成`;
+            document.getElementById('progress-percentage').textContent = `${percentage}%`;
+            document.getElementById('progress-fill').style.width = `${percentage}%`;
+        }
+
+        // Checkbox & CRUD Operations
+        function toggleItemCheck(catId, itemId) {
+            const cat = appData[currentTab].find(c => c.id === catId);
+            if (cat) {
+                const item = cat.items.find(i => i.id === itemId);
+                if (item) {
+                    item.checked = !item.checked;
+                    saveDataToStorage();
+                    renderCategories();
+                }
+            }
+        }
+
+        function handleAddItem(e, catId) {
+            e.preventDefault();
+            const input = document.getElementById(`input-new-item-${catId}`);
+            const val = input.value.trim();
+
+            if (!val) return;
+
+            const cat = appData[currentTab].find(c => c.id === catId);
+            if (cat) {
+                cat.items.push({
+                    id: 'item_' + Date.now() + Math.random().toString(36).substr(2, 3),
+                    name: val,
+                    checked: false
                 });
-
-                saveToLocalStorage();
-                updateCategoryDropdown();
-                renderList();
-                showToast(`已成功新增分類「${trimmedName}」`, 'success');
+                saveDataToStorage();
+                renderCategories();
+                showToast("已成功新增項目");
             }
         }
 
-        function renameCategory(index) {
-            const currentList = packingData[currentMode];
-            const oldCategory = currentList[index];
-            if (!oldCategory) return;
-
-            const newName = prompt("請輸入新的分類名稱:", oldCategory.category);
-            if (newName && newName.trim() && newName.trim() !== oldCategory.category) {
-                const trimmedName = newName.trim();
-                oldCategory.category = trimmedName;
-                saveToLocalStorage();
-                updateCategoryDropdown();
-                renderList();
-                showToast(`分類名稱已變更為「${trimmedName}」`, 'success');
+        function deleteItem(catId, itemId) {
+            const cat = appData[currentTab].find(c => c.id === catId);
+            if (cat) {
+                cat.items = cat.items.filter(i => i.id !== itemId);
+                saveDataToStorage();
+                renderCategories();
+                showToast("已刪除項目");
             }
         }
 
-        function deleteCategory(index) {
-            const currentList = packingData[currentMode];
-            const cat = currentList[index];
+        function promptEditItem(catId, itemId) {
+            const cat = appData[currentTab].find(c => c.id === catId);
+            if (!cat) return;
+            const item = cat.items.find(i => i.id === itemId);
+            if (!item) return;
+
+            showModal({
+                title: "編輯項目名稱",
+                desc: "修改該攜帶物品名稱：",
+                defaultValue: item.name,
+                onConfirm: (newVal) => {
+                    if (newVal.trim()) {
+                        item.name = newVal.trim();
+                        saveDataToStorage();
+                        renderCategories();
+                        showToast("已更新項目名稱");
+                    }
+                }
+            });
+        }
+
+        function promptAddCategory() {
+            showModal({
+                title: "新增清單分類",
+                desc: "請輸入分類標題（如：攝影器材、防曬用品）：",
+                defaultValue: "",
+                onConfirm: (catName) => {
+                    if (catName.trim()) {
+                        appData[currentTab].push({
+                            id: 'cat_' + Date.now(),
+                            name: catName.trim(),
+                            items: []
+                        });
+                        saveDataToStorage();
+                        renderCategories();
+                        showToast("已新增分類");
+                    }
+                }
+            });
+        }
+
+        function promptEditCategory(catId) {
+            const cat = appData[currentTab].find(c => c.id === catId);
             if (!cat) return;
 
-            if (confirm(`確定要刪除整個【${cat.category}】分類及其內部所有項目嗎？`)) {
-                currentList.splice(index, 1);
-                saveToLocalStorage();
-                updateCategoryDropdown();
-                renderList();
-                showToast(`已刪除【${cat.category}】分類`, 'info');
-            }
+            showModal({
+                title: "修改分類標題",
+                desc: "請輸入新的分類名稱：",
+                defaultValue: cat.name,
+                onConfirm: (newName) => {
+                    if (newName.trim()) {
+                        cat.name = newName.trim();
+                        saveDataToStorage();
+                        renderCategories();
+                        showToast("分類標題已更新");
+                    }
+                }
+            });
+        }
+
+        function confirmDeleteCategory(catId) {
+            const cat = appData[currentTab].find(c => c.id === catId);
+            if (!cat) return;
+
+            showModal({
+                title: `刪除「${cat.name}」？`,
+                desc: "警告：這將會一併刪除該分類下的所有包含項目。",
+                showInput: false,
+                onConfirm: () => {
+                    appData[currentTab] = appData[currentTab].filter(c => c.id !== catId);
+                    saveDataToStorage();
+                    renderCategories();
+                    showToast("分類已刪除");
+                }
+            });
         }
 
         function clearAllChecks() {
-            const currentList = packingData[currentMode];
-            let hasChecked = false;
-            currentList.forEach(cat => {
+            const categories = appData[currentTab] || [];
+            let count = 0;
+            categories.forEach(cat => {
                 cat.items.forEach(item => {
-                    if (item.checked) {
-                        item.checked = false;
-                        hasChecked = true;
-                    }
+                    if (item.checked) count++;
+                    item.checked = false;
                 });
             });
 
-            if (hasChecked) {
-                saveToLocalStorage();
-                renderList();
-                showToast('已完成一鍵取消所有勾選！', 'success');
-            } else {
-                showToast('目前沒有勾選的項目喔', 'info');
+            if (count === 0) {
+                showToast("目前沒有被勾選的項目");
+                return;
             }
+
+            saveDataToStorage();
+            renderCategories();
+            showToast("已清除所有勾選狀態");
+        }
+
+        function confirmResetToDefault() {
+            showModal({
+                title: "還原預設清單？",
+                desc: "這會重置目前頁面的所有分類與勾選記錄，確定還原？",
+                showInput: false,
+                onConfirm: () => resetToDefault()
+            });
         }
 
         function resetToDefault() {
-            if (confirm(`確定要把【${currentMode === 'domestic' ? '國內' : '國外'}旅遊清單】還原成預設狀態嗎？這會清除您自訂的內容！`)) {
-                if (currentMode === 'domestic') {
-                    packingData.domestic = JSON.parse(JSON.stringify(defaultDomesticList));
-                } else {
-                    packingData.foreign = JSON.parse(JSON.stringify(defaultForeignList));
+            appData[currentTab] = JSON.parse(JSON.stringify(DEFAULT_DATA[currentTab]));
+            saveDataToStorage();
+            renderCategories();
+            showToast("已還原預設清單");
+        }
+
+        // Backup Export / Import
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `packsmart_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(dlAnchorElem);
+            dlAnchorElem.click();
+            dlAnchorElem.remove();
+            showToast("已匯出清單備份 JSON");
+        }
+
+        function triggerImport() {
+            document.getElementById('json-file-input').click();
+        }
+
+        function importJSON(event) {
+            const fileReader = new FileReader();
+            fileReader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported.domestic && imported.international) {
+                        appData = imported;
+                        saveDataToStorage();
+                        renderCategories();
+                        showToast("成功匯入清單資料！");
+                    } else {
+                        showToast("檔案格式不相符");
+                    }
+                } catch (err) {
+                    showToast("讀取 JSON 檔案失敗");
                 }
-                saveToLocalStorage();
-                updateCategoryDropdown();
-                renderList();
-                showToast('清單已重置為預設狀態！', 'success');
+            };
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0]);
             }
         }
 
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
+        // Modal Utility
+        function showModal({ title, desc, defaultValue = "", showInput = true, onConfirm }) {
+            const backdrop = document.getElementById('modal-backdrop');
+            const box = document.getElementById('modal-box');
+            const titleEl = document.getElementById('modal-title');
+            const descEl = document.getElementById('modal-desc');
+            const inputContainer = document.getElementById('modal-input-container');
+            const inputEl = document.getElementById('modal-input');
+            const confirmBtn = document.getElementById('modal-btn-confirm');
 
-            const toast = document.createElement('div');
-            let icon = 'fa-info-circle';
-            let bgClass = 'bg-slate-800 text-white';
+            titleEl.textContent = title;
+            descEl.textContent = desc;
 
-            if (type === 'success') {
-                icon = 'fa-check-circle';
-                bgClass = 'bg-teal-600 text-white';
-            } else if (type === 'warning') {
-                icon = 'fa-exclamation-triangle';
-                bgClass = 'bg-amber-500 text-white';
+            if (showInput) {
+                inputContainer.classList.remove('hidden');
+                inputEl.value = defaultValue;
+                setTimeout(() => inputEl.focus(), 100);
+            } else {
+                inputContainer.classList.add('hidden');
             }
 
-            toast.className = `flex items-center space-x-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium transform transition-all duration-300 opacity-0 translate-y-2 ${bgClass}`;
-            toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${escapeHtml(message)}</span>`;
+            confirmBtn.onclick = () => {
+                const val = inputEl.value;
+                closeModal();
+                if (onConfirm) onConfirm(val);
+            };
 
-            container.appendChild(toast);
-
+            backdrop.classList.remove('hidden');
             setTimeout(() => {
-                toast.classList.remove('opacity-0', 'translate-y-2');
+                box.classList.remove('scale-95', 'opacity-0');
+                box.classList.add('scale-100', 'opacity-100');
             }, 10);
+        }
 
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 2500);
+        function closeModal() {
+            const backdrop = document.getElementById('modal-backdrop');
+            const box = document.getElementById('modal-box');
+            box.classList.remove('scale-100', 'opacity-100');
+            box.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => backdrop.classList.add('hidden'), 200);
+        }
+
+        // Toast Feedback
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 2200);
         }
 
         function escapeHtml(str) {
-            return String(str).replace(/[&<>"']/g, function(m) {
-                return {
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;',
-                    '"': '&quot;',
-                    "'": '&#039;'
-                }[m];
-            });
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     </script>
 </body>
