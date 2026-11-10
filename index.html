@@ -243,52 +243,17 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Firebase SDKs for Realtime Cloud Sync -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDummyKeyForFirebaseDemoProjectOnly",
-            authDomain: "travel-packing-sync.firebaseapp.com",
-            projectId: "travel-packing-sync",
-            storageBucket: "travel-packing-sync.appspot.com",
-            messagingSenderId: "1234567890",
-            appId: "1:1234567890:web:abcdef123456"
-        };
-
-        let db = null;
-        let auth = null;
-        let unsubscribeRoom = null;
-
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'travel-checklist-app';
-
-        // High-Speed Realtime Cloud Sync Engine (Firestore + BroadcastChannel)
+    <!-- Free Public Realtime WebSocket Sync Engine (PieSocket) -->
+    <script>
         window.cloudSync = {
+            ws: null,
             currentRoomId: null,
 
-            initFirebase: async function() {
-                if (db) return true;
-                try {
-                    const cfg = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
-                    const app = initializeApp(cfg);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                    await signInAnonymously(auth);
-                    return true;
-                } catch(e) {
-                    console.warn("Firebase Auth fallback to local broadcast mode", e);
-                    return false;
-                }
-            },
-
-            subscribeRoom: async function(roomId, onDataUpdate) {
+            subscribeRoom: function(roomId, onDataUpdate) {
                 this.leaveRoom();
                 this.currentRoomId = roomId;
 
-                // 1. 本地 BroadcastChannel 雙重保障
+                // 本地跨分頁 BroadcastChannel 支援
                 this.localChannel = new BroadcastChannel('travel_room_' + roomId);
                 this.localChannel.onmessage = (event) => {
                     if (event.data && event.data.data) {
@@ -296,57 +261,50 @@
                     }
                 };
 
-                // 2. 雲端即時連線 (Firestore onSnapshot)
-                const isConnected = await this.initFirebase();
-                if (isConnected && db) {
-                    try {
-                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
-                        unsubscribeRoom = onSnapshot(docRef, (docSnap) => {
-                            if (docSnap.exists()) {
-                                const data = docSnap.data();
-                                if (data && data.packingData) {
-                                    window.lastSyncTime = data.updatedAt || Date.now();
-                                    onDataUpdate(data.packingData);
-                                }
+                // 開啟跨裝置公用 WebSocket 秒級同步通道
+                const wsUrl = `wss://demo.piesocket.com/v3/channel_${encodeURIComponent(roomId)}?api_key=VCX2a0EWuBxAzFQLA0031POW5UTyWEnGlDuTwZX7&notify_self=false`;
+                
+                try {
+                    this.ws = new WebSocket(wsUrl);
+                    this.ws.onmessage = (event) => {
+                        try {
+                            const msg = JSON.parse(event.data);
+                            if (msg && msg.type === 'SYNC_PACKING_DATA' && msg.data) {
+                                window.lastSyncTime = msg.timestamp;
+                                onDataUpdate(msg.data);
                             }
-                        }, (error) => {
-                            console.error("Firestore sync error:", error);
-                        });
-                    } catch(e) {
-                        console.error("Error setting up room listener", e);
-                    }
+                        } catch(e) {}
+                    };
+                } catch(e) {
+                    console.error("WebSocket connection error:", e);
                 }
             },
 
-            uploadData: async function(data) {
+            uploadData: function(data) {
                 if (!this.currentRoomId) return;
 
                 const timestamp = Date.now();
-                window.lastSyncTime = timestamp;
+                const payload = {
+                    type: 'SYNC_PACKING_DATA',
+                    timestamp: timestamp,
+                    data: data
+                };
 
-                // 1. 發送本機即時廣播
+                // 1. 發送本機跨分頁廣播
                 if (this.localChannel) {
                     this.localChannel.postMessage({ timestamp: timestamp, data: data });
                 }
 
-                // 2. 推送至雲端資料庫
-                if (db) {
-                    try {
-                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', this.currentRoomId);
-                        await setDoc(docRef, {
-                            packingData: data,
-                            updatedAt: timestamp
-                        }, { merge: true });
-                    } catch(e) {
-                        console.error("Cloud upload failed", e);
-                    }
+                // 2. 發送跨裝置 WebSocket 廣播
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify(payload));
                 }
             },
 
             leaveRoom: function() {
-                if (unsubscribeRoom) {
-                    unsubscribeRoom();
-                    unsubscribeRoom = null;
+                if (this.ws) {
+                    this.ws.close();
+                    this.ws = null;
                 }
                 if (this.localChannel) {
                     this.localChannel.close();
@@ -513,7 +471,7 @@
                 localStorage.removeItem('travel_packing_room_id');
             }
 
-            // 強制雲端同步最新勾選/刪除狀態 (即時推送)
+            // 強制發送秒級廣播
             if (currentRoomId && window.cloudSync && !isSyncingFromCloud) {
                 window.cloudSync.uploadData(packingData);
             }
