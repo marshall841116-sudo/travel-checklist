@@ -243,104 +243,65 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Firebase SDK Modules -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <!-- Realtime PubSub CDN for Live Multi-device Syncing -->
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
 
-        // Global environment configs
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'travel-packing-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "dummy-key",
-            authDomain: "dummy.firebaseapp.com",
-            projectId: "dummy-project",
-            storageBucket: "dummy.appspot.com",
-            messagingSenderId: "123456",
-            appId: "1:123456:web:12345"
-        };
+    <script>
+        // Realtime Cross-Device Syncing Controller (PubNub Demo Key)
+        let pubnub = null;
+        let pubnubChannel = null;
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        let currentUser = null;
-        let unsubscribeRoomListener = null;
-
-        // Initialize Firebase Authentication
-        async function initAuth() {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (err) {
-                console.warn("Auth initialization fallback:", err);
-            }
-        }
-
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            const urlParams = new URLSearchParams(window.location.search);
-            const roomFromUrl = urlParams.get('room');
-            if (roomFromUrl) {
-                joinRoom(roomFromUrl);
-            }
-        });
-
-        // Attach Firebase syncing methods to window
         window.cloudSync = {
             currentRoomId: null,
-            
+
             subscribeRoom: function(roomId, onDataUpdate) {
-                if (!db) return;
+                this.leaveRoom();
                 this.currentRoomId = roomId;
 
-                if (unsubscribeRoomListener) {
-                    unsubscribeRoomListener();
+                if (!pubnub) {
+                    pubnub = new PubNub({
+                        publishKey: 'demo',
+                        subscribeKey: 'demo',
+                        userId: 'user_' + Math.random().toString(36).substring(2, 9)
+                    });
                 }
 
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'travel_rooms', roomId);
+                pubnubChannel = 'travel_packing_room_' + roomId;
 
-                unsubscribeRoomListener = onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        if (data && data.packingData) {
-                            onDataUpdate(data.packingData);
+                pubnub.addListener({
+                    message: function(event) {
+                        if (event.publisher !== pubnub.getUserId()) {
+                            if (event.message && event.message.packingData) {
+                                onDataUpdate(event.message.packingData);
+                            }
                         }
-                    } else {
-                        this.uploadData(window.getPackingData());
                     }
-                }, (error) => {
-                    console.error("Firestore sync error:", error);
+                });
+
+                pubnub.subscribe({
+                    channels: [pubnubChannel]
                 });
             },
 
-            uploadData: async function(data) {
-                if (!this.currentRoomId || !db) return;
-                try {
-                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'travel_rooms', this.currentRoomId);
-                    await setDoc(docRef, {
+            uploadData: function(data) {
+                if (!this.currentRoomId || !pubnub || !pubnubChannel) return;
+                pubnub.publish({
+                    channel: pubnubChannel,
+                    message: {
                         packingData: data,
-                        updatedAt: Date.now()
-                    }, { merge: true });
-                } catch (err) {
-                    console.error("Error uploading packing data:", err);
-                }
+                        timestamp: Date.now()
+                    }
+                }).catch(err => console.error("Publish error:", err));
             },
 
             leaveRoom: function() {
-                if (unsubscribeRoomListener) {
-                    unsubscribeRoomListener();
-                    unsubscribeRoomListener = null;
+                if (pubnub && pubnubChannel) {
+                    pubnub.unsubscribe({ channels: [pubnubChannel] });
                 }
                 this.currentRoomId = null;
+                pubnubChannel = null;
             }
         };
-
-        window.initAuth = initAuth;
-        initAuth();
     </script>
 
     <!-- JavaScript Main Logic -->
