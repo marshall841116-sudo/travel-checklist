@@ -247,9 +247,9 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <script>
-        // Realtime WebRTC Cross-Device Syncing Controller
+        // Optimized Multi-Device & Multi-Tab Realtime Syncing Controller
         let peer = null;
-        let connections = [];
+        let activeConns = [];
 
         window.cloudSync = {
             currentRoomId: null,
@@ -258,63 +258,65 @@
                 this.leaveRoom();
                 this.currentRoomId = roomId;
 
-                const myPeerId = 'packing_' + roomId + '_' + Math.random().toString(36).substring(2, 7);
-                const hostPeerId = 'packing_room_host_' + roomId;
+                // 隨機產生獨立 Peer ID，避免 ID 衝突
+                const myPeerId = 'pack_' + roomId + '_' + Math.random().toString(36).substring(2, 9);
+                const hostPeerId = 'pack_host_' + roomId;
 
                 peer = new Peer(hostPeerId);
 
                 peer.on('open', (id) => {
-                    console.log('Room Host Created:', id);
+                    console.log('連線成功 (Host 房主):', id);
                 });
 
                 peer.on('error', (err) => {
-                    if (err.type === 'unavailable-id') {
-                        // Host 已經存在，改以 Client 身份連線
+                    // 若 Host ID 已被佔用，則自動作為 Client 參加者加入
+                    if (err.type === 'unavailable-id' || err.type === 'peer-unavailable') {
                         peer = new Peer(myPeerId);
                         peer.on('open', () => {
+                            console.log('連線成功 (Client 參加者):', myPeerId);
                             const conn = peer.connect(hostPeerId);
-                            this.setupConnection(conn, onDataUpdate);
+                            this.setupConn(conn, onDataUpdate);
                         });
                     }
                 });
 
                 peer.on('connection', (conn) => {
-                    this.setupConnection(conn, onDataUpdate);
-                    // 當有新人加入時，立刻把當前最新清單發送給他
+                    this.setupConn(conn, onDataUpdate);
+                    // 新人進房，廣播最新資料
                     setTimeout(() => {
                         if (window.getPackingData) {
-                            conn.send({ type: 'sync', packingData: window.getPackingData() });
+                            conn.send({ type: 'SYNC_DATA', data: window.getPackingData() });
                         }
-                    }, 300);
+                    }, 500);
                 });
             },
 
-            setupConnection: function(conn, onDataUpdate) {
-                connections.push(conn);
+            setupConn: function(conn, onDataUpdate) {
+                activeConns.push(conn);
 
-                conn.on('data', (data) => {
-                    if (data && data.type === 'sync' && data.packingData) {
-                        onDataUpdate(data.packingData);
+                conn.on('data', (res) => {
+                    if (res && res.type === 'SYNC_DATA' && res.data) {
+                        onDataUpdate(res.data);
                     }
                 });
 
                 conn.on('close', () => {
-                    connections = connections.filter(c => c !== conn);
+                    activeConns = activeConns.filter(c => c !== conn);
                 });
             },
 
             uploadData: function(data) {
                 if (!this.currentRoomId) return;
-                connections.forEach(conn => {
+                activeConns.forEach(conn => {
                     if (conn.open) {
-                        conn.send({ type: 'sync', packingData: data });
+                        conn.send({ type: 'SYNC_DATA', data: data });
                     }
                 });
             },
 
             leaveRoom: function() {
-                connections.forEach(conn => conn.close());
-                connections = [];
+                activeConns.forEach(c => c.close());
+                activeConns = [];
                 if (peer) {
                     peer.destroy();
                     peer = null;
